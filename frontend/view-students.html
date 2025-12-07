@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Students - SRMS</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Student Record Management System</h1>
+            <p class="subtitle">View All Students</p>
+        </header>
+
+        <nav class="navigation">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="add-student.html" class="nav-link">Add Student</a>
+            <a href="view-students.html" class="nav-link active">View Students</a>
+            <a href="search-student.html" class="nav-link">Search Student</a>
+            <a href="analytics.html" class="nav-link">Analytics</a>
+        </nav>
+
+        <main class="main-content">
+            <div class="table-container">
+                <div class="table-header">
+                    <h2>All Students</h2>
+                    <button class="btn btn-primary" onclick="loadStudents()">🔄 Refresh</button>
+                </div>
+
+                <div id="loadingMessage" class="loading">Loading students...</div>
+                <div id="errorMessage" class="message error" style="display: none;"></div>
+
+                <div id="studentsTableContainer" style="display: none;">
+                    <table class="students-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Age</th>
+                                <th>Course</th>
+                                <th>Email</th>
+                                <th>GPA</th>
+                                <th>Marks</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody">
+                            <!-- Students will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="noStudentsMessage" class="no-data" style="display: none;">
+                    <p>No students found in the system.</p>
+                    <a href="add-student.html" class="btn btn-primary">Add Your First Student</a>
+                </div>
+            </div>
+
+            <!-- Update Modal -->
+            <div id="updateModal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="closeModal()">&times;</span>
+                    <h2>Update Student</h2>
+                    
+                    <form id="updateStudentForm" class="student-form">
+                        <input type="hidden" id="updateId">
+                        
+                        <div class="form-group">
+                            <label for="updateName">Full Name *</label>
+                            <input type="text" id="updateName" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="updateAge">Age *</label>
+                            <input type="number" id="updateAge" required min="16" max="100">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="updateCourse">Course *</label>
+                            <input type="text" id="updateCourse" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="updateEmail">Email *</label>
+                            <input type="email" id="updateEmail" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="updateGpa">GPA *</label>
+                            <input type="number" id="updateGpa" required min="0" max="10" step="0.01">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="updateMarks">Marks (0-100) *</label>
+                            <input type="number" id="updateMarks" required min="0" max="100">
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Update Student</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 Student Record Management System. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        window.addEventListener('load', loadStudents);
+
+        async function loadStudents() {
+            const loadingMsg = document.getElementById('loadingMessage');
+            const errorMsg = document.getElementById('errorMessage');
+            const tableContainer = document.getElementById('studentsTableContainer');
+            const noDataMsg = document.getElementById('noStudentsMessage');
+            const tableBody = document.getElementById('studentsTableBody');
+
+            loadingMsg.style.display = 'block';
+            errorMsg.style.display = 'none';
+            tableContainer.style.display = 'none';
+            noDataMsg.style.display = 'none';
+
+            try {
+                const students = await fetchStudents();
+                loadingMsg.style.display = 'none';
+
+                if (students.length === 0) {
+                    noDataMsg.style.display = 'block';
+                } else {
+                    tableContainer.style.display = 'block';
+                    displayStudents(students);
+                }
+            } catch (error) {
+                loadingMsg.style.display = 'none';
+                errorMsg.textContent = 'Error loading students: ' + error.message;
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        function displayStudents(students) {
+            const tableBody = document.getElementById('studentsTableBody');
+            tableBody.innerHTML = '';
+
+            students.forEach(student => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${student.id}</td>
+                    <td>${student.name}</td>
+                    <td>${student.age}</td>
+                    <td>${student.course}</td>
+                    <td>${student.email}</td>
+                    <td>${student.gpa.toFixed(2)}</td>
+                    <td>${student.marks || 0}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-small btn-edit" onclick="editStudent(${student.id})">Edit</button>
+                        <button class="btn btn-small btn-delete" onclick="deleteStudentConfirm(${student.id}, '${student.name}')">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        async function editStudent(id) {
+            try {
+                const student = await searchStudent(id);
+                
+                document.getElementById('updateId').value = student.id;
+                document.getElementById('updateName').value = student.name;
+                document.getElementById('updateAge').value = student.age;
+                document.getElementById('updateCourse').value = student.course;
+                document.getElementById('updateEmail').value = student.email;
+                document.getElementById('updateGpa').value = student.gpa;
+                document.getElementById('updateMarks').value = student.marks || 0;
+                
+                document.getElementById('updateModal').style.display = 'block';
+            } catch (error) {
+                alert('Error loading student: ' + error.message);
+            }
+        }
+
+        document.getElementById('updateStudentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                id: parseInt(document.getElementById('updateId').value),
+                name: document.getElementById('updateName').value,
+                age: parseInt(document.getElementById('updateAge').value),
+                course: document.getElementById('updateCourse').value,
+                email: document.getElementById('updateEmail').value,
+                gpa: parseFloat(document.getElementById('updateGpa').value),
+                marks: parseInt(document.getElementById('updateMarks').value)
+            };
+
+            try {
+                await updateStudent(formData.id, formData);
+                closeModal();
+                alert('Student updated successfully!');
+                loadStudents();
+            } catch (error) {
+                alert('Error updating student: ' + error.message);
+            }
+        });
+
+        async function deleteStudentConfirm(id, name) {
+            if (confirm(`Are you sure you want to delete ${name}?`)) {
+                try {
+                    await deleteStudent(id);
+                    alert('Student deleted successfully!');
+                    loadStudents();
+                } catch (error) {
+                    alert('Error deleting student: ' + error.message);
+                }
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('updateModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('updateModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>

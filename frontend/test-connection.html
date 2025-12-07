@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Connection Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+        }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+        .status.testing {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 2px solid #3b82f6;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        .info {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .info h3 {
+            margin-top: 0;
+            color: #475569;
+        }
+        code {
+            background: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 SRMS Server Connection Test</h1>
+        
+        <div class="info">
+            <h3>Before Testing:</h3>
+            <ol>
+                <li>Make sure the backend server is running</li>
+                <li>Start server with: <code>.\run-server.bat</code></li>
+                <li>Server should be running on <code>http://localhost:8080</code></li>
+            </ol>
+        </div>
+
+        <button onclick="testConnection()">Test Server Connection</button>
+        
+        <div id="status"></div>
+        
+        <div id="details"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api';
+
+        async function testConnection() {
+            const statusDiv = document.getElementById('status');
+            const detailsDiv = document.getElementById('details');
+            
+            statusDiv.innerHTML = '<div class="status testing">🔄 Testing connection to server...</div>';
+            detailsDiv.innerHTML = '';
+            
+            try {
+                // Test 1: Fetch students
+                console.log('Testing GET /api/students...');
+                const response = await fetch(`${API_BASE_URL}/students`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                console.log('Response:', result);
+                
+                // Test 2: Verify response format
+                if (!result.status) {
+                    throw new Error('Invalid response format - missing status field');
+                }
+                
+                // Success!
+                statusDiv.innerHTML = '<div class="status success">✅ Server is running and responding correctly!</div>';
+                
+                let html = '<div class="info"><h3>Test Results:</h3>';
+                html += '<p><strong>Status:</strong> Connected ✓</p>';
+                html += '<p><strong>Endpoint:</strong> ' + API_BASE_URL + '</p>';
+                html += '<p><strong>Response Status:</strong> ' + result.status + '</p>';
+                html += '<p><strong>Number of Students:</strong> ' + (result.data ? result.data.length : 0) + '</p>';
+                
+                if (result.data && result.data.length > 0) {
+                    html += '<p><strong>Sample Student:</strong></p>';
+                    html += '<pre>' + JSON.stringify(result.data[0], null, 2) + '</pre>';
+                }
+                
+                html += '<p style="color: green; font-weight: bold;">🎉 Everything is working! You can now use the SRMS application.</p>';
+                html += '</div>';
+                
+                detailsDiv.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Connection test failed:', error);
+                
+                let errorMessage = error.message;
+                let troubleshooting = '';
+                
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorMessage = 'Cannot connect to server';
+                    troubleshooting = `
+                        <div class="info">
+                            <h3>❌ Server Not Running</h3>
+                            <p><strong>Problem:</strong> The backend server is not accessible.</p>
+                            <p><strong>Solution:</strong></p>
+                            <ol>
+                                <li>Open PowerShell in the project directory</li>
+                                <li>Run: <code>.\\run-server.bat</code></li>
+                                <li>Wait for "Server Running" message</li>
+                                <li>Come back and click "Test Server Connection" again</li>
+                            </ol>
+                        </div>
+                    `;
+                } else if (error.message.includes('HTTP')) {
+                    troubleshooting = `
+                        <div class="info">
+                            <h3>⚠️ Server Error</h3>
+                            <p>The server is running but returned an error.</p>
+                            <p>Check the server terminal for error messages.</p>
+                        </div>
+                    `;
+                } else {
+                    troubleshooting = `
+                        <div class="info">
+                            <h3>⚠️ Unexpected Error</h3>
+                            <p><strong>Error:</strong> ${error.message}</p>
+                            <p>Check browser console (F12) for more details.</p>
+                        </div>
+                    `;
+                }
+                
+                statusDiv.innerHTML = '<div class="status error">❌ Connection Failed: ' + errorMessage + '</div>';
+                detailsDiv.innerHTML = troubleshooting;
+            }
+        }
+        
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            setTimeout(testConnection, 500);
+        });
+    </script>
+</body>
+</html>
